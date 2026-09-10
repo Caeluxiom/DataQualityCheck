@@ -13,3 +13,23 @@ def load_and_summarize(filepath):
         parser.add_argument("filepath", help="File Location")
         args = parser.parse_args()
     load_and_summarize(args.filepath)
+
+def check_missing_values(df):
+    missing_count = df.isna().sum()
+    missing_pct = (missing_count / len(df)) * 100
+
+    report = pd.DataFrame({
+        "missing_count": missing_count,
+        "missing_pct": missing_pct.round(1)
+    })
+
+    report = report[report["missing_count"] > 0] .sort_values("missing_pct", ascending=False)
+
+    print("\n---missing values---")
+    if report.empty:
+        print("no missing values found")
+    
+    else:
+             print(report)
+
+    return report
