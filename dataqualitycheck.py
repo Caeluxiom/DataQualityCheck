@@ -60,4 +60,36 @@ def check_missing_values(df):
     if not flagged:
         print("no obvious issues detected but i am still just python code, recheck regardless if paranoid.") 
 
-        return flagged    
+        return flagged
+
+    def check_ouliers(df):
+        print("\n--- Potential Outliers (IQR)---")
+        numeric_cols = df.select_dtypes(include="number").columns
+
+        for col in numeric_cols:
+            q1 = df[col].quantile(0.25)
+            q3 = df[col].quantile(0.75)
+            iqr = q3 - q1
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+
+            outlier_count = ((df[col] < lower) | (df[col] > upper)).sum()
+            if outlier_count > 0:
+                pct = (outlier_count / len(df)) * 100
+                print(f"'{col}': {outlier_count} potential outliers ({pct:.1f}%)")
+
+    def run_check(filepath):
+        df = load_and_summarize(filepath)
+        check_missing_values(df)
+        check_duplicates(df)
+        check_type_issues(df)
+        check_ouliers(df)
+        print("\nCheck Complete!\n")
+
+    if __name__=="__main__":
+        parser = argparse.ArgumentParser(description="Check a CSV quality.")
+        parser.add_argument("filepath", help="Path to the CSV file")
+        args = parser.parse_args()
+
+        run_audit(args.filepath)
+    
