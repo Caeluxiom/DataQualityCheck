@@ -149,12 +149,14 @@ def check_outliers(df):
 def run_check(filepath):
     df, type_warnings = load_and_summarize(filepath)
 
-    check_missing_values(df)
-    check_duplicates(df)
-    check_type_issues(df, type_warnings)
+    missing_report = check_missing_values(df)
+    full_dupes = check_duplicates(df)
+    flagged_types = check_type_issues(df, type_warnings)
     check_outliers(df)
 
     print("\nCheck Complete!\n")
+
+    return df, missing_report, full_dupes, flagged_types
 
 
 if __name__ == "__main__":
