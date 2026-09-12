@@ -51,8 +51,7 @@ def check_missing_values(df):
 
      for col in df.select_dtypes(include="object").columns:
       sample = df[col].dropna().astype(str).head(50)
-      looks_numeric = sample.str.replace(",", "",regex=False).str.replace("$", "", regex=False).str.match(r"^-?\d+\.?\
-d*$").mean()
+      looks_numeric = sample.str.replace(",", "",regex=False).str.replace("$", "", regex=False).str.match(r"^-?(?:[₹$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$").mean()
     
     if looks_numeric > 0.8:
        flagged.append(col)
