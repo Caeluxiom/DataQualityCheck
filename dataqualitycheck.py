@@ -1,15 +1,39 @@
 import pandas as pd
 import argparse
+import warnings
 
 
 def load_and_summarize(filepath):
-    df = pd.read_csv(filepath)
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always")
+        df = pd.read_csv(filepath)
+
+    type_warnings = []
+
+    for warning in caught_warnings:
+        if warning.category == pd.errors.DtypeWarning:
+            message = str(warning.message)
+
+            columns_text = (
+                message
+                .split("Columns (")[1]
+                .split(") have mixed types")[0]
+            )
+
+            columns = columns_text.split(",")
+
+            for column in columns:
+                column_name = column.split(": ", 1)[1]
+                type_warnings.append(column_name)
+
+    print("\n--- Data Types ---")
+    print(df.dtypes)
 
     print(f"\nFile: {filepath}")
     print(f"Rows: {df.shape[0]:,}")
     print(f"Columns: {df.shape[1]}")
 
-    return df
+    return df, type_warnings
 
 
 def check_missing_values(df):
@@ -48,17 +72,34 @@ def check_duplicates(df):
     return full_dupes
 
 
-def check_type_issues(df):
+def check_type_issues(df, type_warnings):
     print("\n--- Potential Type Issues ---")
 
     flagged = []
 
-    for col in df.select_dtypes(include=["object", "string"]).columns:
+    if type_warnings:
+        print("Mixed types detected during CSV loading:")
 
-        sample = df[col].dropna().astype(str).head(50)
+        for col in type_warnings:
+            print(f"- '{col}'")
+
+    for col in df.select_dtypes(
+        include=["object", "string"]
+    ).columns:
+
+        sample = df[col].dropna().head(1000)
+
+        types = sample.map(type).unique()
+
+        if len(types) > 1:
+            print(
+                f"'{col}' contains multiple Python types: {types}"
+            )
 
         looks_numeric = sample.str.match(
-            r"^-?(?:[₹$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$"
+            r"^-?(?:[₹$€£¥]\s*)?"
+            r"(?:\d{1,3}(?:,\d{3})+|\d+)"
+            r"(?:\.\d+)?$"
         ).mean()
 
         if looks_numeric > 0.8:
@@ -66,10 +107,11 @@ def check_type_issues(df):
 
             print(
                 f"'{col}' is stored as text but looks numeric "
-                f"({looks_numeric:.0%} of the sample matches a number pattern)"
+                f"({looks_numeric:.0%} of the sample "
+                f"matches a number pattern)"
             )
 
-    if not flagged:
+    if not flagged and not type_warnings:
         print("No obvious type issues detected.")
 
     return flagged
@@ -78,10 +120,11 @@ def check_type_issues(df):
 def check_outliers(df):
     print("\n--- Potential Outliers (IQR) ---")
 
-    numeric_cols = df.select_dtypes(include="number").columns
+    numeric_cols = df.select_dtypes(
+        include="number"
+    ).columns
 
     for col in numeric_cols:
-
         q1 = df[col].quantile(0.25)
         q3 = df[col].quantile(0.75)
 
@@ -104,11 +147,11 @@ def check_outliers(df):
 
 
 def run_check(filepath):
-    df = load_and_summarize(filepath)
+    df, type_warnings = load_and_summarize(filepath)
 
     check_missing_values(df)
     check_duplicates(df)
-    check_type_issues(df)
+    check_type_issues(df, type_warnings)
     check_outliers(df)
 
     print("\nCheck Complete!\n")
