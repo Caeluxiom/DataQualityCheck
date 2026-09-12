@@ -68,20 +68,23 @@ def check_duplicates(df):
     if full_dupes > 0:
         pct = (full_dupes / len(df)) * 100
         print(f"({pct:.1f}% of the dataset)")
+    else:
+        pct = 0
 
-    return full_dupes
+    return full_dupes, pct
 
 
 def check_type_issues(df, type_warnings):
     print("\n--- Potential Type Issues ---")
 
-    flagged = []
+    issues = []
 
     if type_warnings:
         print("Mixed types detected during CSV loading:")
 
         for col in type_warnings:
             print(f"- '{col}'")
+            issues.append((col, "Mixed types on load"))
 
     for col in df.select_dtypes(
         include=["object", "string"]
@@ -95,6 +98,7 @@ def check_type_issues(df, type_warnings):
             print(
                 f"'{col}' contains multiple Python types: {types}"
             )
+            issues.append((col, "Multiple Python types"))
 
         looks_numeric = sample.str.match(
             r"^-?(?:[₹$€£¥]\s*)?"
@@ -103,22 +107,25 @@ def check_type_issues(df, type_warnings):
         ).mean()
 
         if looks_numeric > 0.8:
-            flagged.append(col)
-
             print(
                 f"'{col}' is stored as text but looks numeric "
                 f"({looks_numeric:.0%} of the sample "
                 f"matches a number pattern)"
             )
+            issues.append(
+                (col, f"Looks numeric ({looks_numeric:.0%} match)")
+            )
 
-    if not flagged and not type_warnings:
+    if not issues:
         print("No obvious type issues detected.")
 
-    return flagged
+    return issues
 
 
 def check_outliers(df):
     print("\n--- Potential Outliers (IQR) ---")
+
+    results = []
 
     numeric_cols = df.select_dtypes(
         include="number"
@@ -145,18 +152,29 @@ def check_outliers(df):
                 f"({pct:.1f}%)"
             )
 
+            results.append((col, int(outlier_count), pct))
+
+    return results
+
 
 def run_check(filepath):
     df, type_warnings = load_and_summarize(filepath)
 
     missing_report = check_missing_values(df)
-    full_dupes = check_duplicates(df)
-    flagged_types = check_type_issues(df, type_warnings)
-    check_outliers(df)
+    duplicate_count, duplicate_pct = check_duplicates(df)
+    type_issues = check_type_issues(df, type_warnings)
+    outlier_report = check_outliers(df)
 
     print("\nCheck Complete!\n")
 
-    return df, missing_report, full_dupes, flagged_types
+    return (
+        df,
+        missing_report,
+        duplicate_count,
+        duplicate_pct,
+        type_issues,
+        outlier_report
+    )
 
 
 if __name__ == "__main__":
