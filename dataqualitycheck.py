@@ -1,18 +1,16 @@
-import pandas as pd 
+import pandas as pd
 import argparse
+
 
 def load_and_summarize(filepath):
     df = pd.read_csv(filepath)
-    print (f"\nfile: {filepath}")
-    print (f"Rows: {df.shape[0]: , }")
-    print (f"Columns:{df.shape[1]}")
+
+    print(f"\nFile: {filepath}")
+    print(f"Rows: {df.shape[0]:,}")
+    print(f"Columns: {df.shape[1]}")
+
     return df
 
-    if __name__ == "__main__":
-        parser = argparse.ArgumentParser(description="View a CSV file's internals quality.")
-        parser.add_argument("filepath", help="File Location")
-        args = parser.parse_args()
-    load_and_summarize(args.filepath)
 
 def check_missing_values(df):
     missing_count = df.isna().sum()
@@ -23,73 +21,109 @@ def check_missing_values(df):
         "missing_pct": missing_pct.round(1)
     })
 
-    report = report[report["missing_count"] > 0] .sort_values("missing_pct", ascending=False)
+    report = report[
+        report["missing_count"] > 0
+    ].sort_values("missing_pct", ascending=False)
 
-    print("\n---missing values---")
+    print("\n--- Missing Values ---")
+
     if report.empty:
-        print("no missing values found")
-    
+        print("No missing values found")
     else:
-             print(report)
+        print(report)
 
     return report
 
-    def check_duplicates(df):
-        full_dupes = df.duplicated().sum()
-        print("\n--- Duplicate Rows ---")
-        print(f"fully duplicated rows: {full_dupes}")
 
-        if full_dupes>0:
-            pct = (full_dupes / len(df)) *100
-            print(f"({pct: .1f}% of the dataset)")
+def check_duplicates(df):
+    full_dupes = df.duplicated().sum()
 
-        return full_dupes
+    print("\n--- Duplicate Rows ---")
+    print(f"Fully duplicated rows: {full_dupes}")
 
-    def check_type_issues(df):
-     print("\n--- POTENTIAL TYPE ISSUES ---")
-     flagged = []
+    if full_dupes > 0:
+        pct = (full_dupes / len(df)) * 100
+        print(f"({pct:.1f}% of the dataset)")
 
-     for col in df.select_dtypes(include="object").columns:
-      sample = df[col].dropna().astype(str).head(50)
-      looks_numeric = sample.str.replace(",", "",regex=False).str.replace("$", "", regex=False).str.match(r"^-?(?:[₹$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$").mean()
-    
-    if looks_numeric > 0.8:
-       flagged.append(col)
-       print(f"'{col}' is stored as a text but looks numeric ({looks_numeric: .0%} of the sample matches a number pattern)")
+    return full_dupes
+
+
+def check_type_issues(df):
+    print("\n--- Potential Type Issues ---")
+
+    flagged = []
+
+    for col in df.select_dtypes(include=["object", "string"]).columns:
+
+        sample = df[col].dropna().astype(str).head(50)
+
+        looks_numeric = sample.str.match(
+            r"^-?(?:[₹$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$"
+        ).mean()
+
+        if looks_numeric > 0.8:
+            flagged.append(col)
+
+            print(
+                f"'{col}' is stored as text but looks numeric "
+                f"({looks_numeric:.0%} of the sample matches a number pattern)"
+            )
 
     if not flagged:
-        print("no obvious issues detected but i am still just python code, recheck regardless if paranoid.") 
+        print("No obvious type issues detected.")
 
-        return flagged
+    return flagged
 
-    def check_ouliers(df):
-        print("\n--- Potential Outliers (IQR)---")
-        numeric_cols = df.select_dtypes(include="number").columns
 
-        for col in numeric_cols:
-            q1 = df[col].quantile(0.25)
-            q3 = df[col].quantile(0.75)
-            iqr = q3 - q1
-            lower = q1 - 1.5 * iqr
-            upper = q3 + 1.5 * iqr
+def check_outliers(df):
+    print("\n--- Potential Outliers (IQR) ---")
 
-            outlier_count = ((df[col] < lower) | (df[col] > upper)).sum()
-            if outlier_count > 0:
-                pct = (outlier_count / len(df)) * 100
-                print(f"'{col}': {outlier_count} potential outliers ({pct:.1f}%)")
+    numeric_cols = df.select_dtypes(include="number").columns
 
-    def run_check(filepath):
-        df = load_and_summarize(filepath)
-        check_missing_values(df)
-        check_duplicates(df)
-        check_type_issues(df)
-        check_ouliers(df)
-        print("\nCheck Complete!\n")
+    for col in numeric_cols:
 
-    if __name__=="__main__":
-        parser = argparse.ArgumentParser(description="Check a CSV quality.")
-        parser.add_argument("filepath", help="Path to the CSV file")
-        args = parser.parse_args()
+        q1 = df[col].quantile(0.25)
+        q3 = df[col].quantile(0.75)
 
-        run_audit(args.filepath)
-    
+        iqr = q3 - q1
+
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+
+        outlier_count = (
+            (df[col] < lower) | (df[col] > upper)
+        ).sum()
+
+        if outlier_count > 0:
+            pct = (outlier_count / len(df)) * 100
+
+            print(
+                f"'{col}': {outlier_count} potential outliers "
+                f"({pct:.1f}%)"
+            )
+
+
+def run_check(filepath):
+    df = load_and_summarize(filepath)
+
+    check_missing_values(df)
+    check_duplicates(df)
+    check_type_issues(df)
+    check_outliers(df)
+
+    print("\nCheck Complete!\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Check a CSV quality."
+    )
+
+    parser.add_argument(
+        "filepath",
+        help="Path to the CSV file"
+    )
+
+    args = parser.parse_args()
+
+    run_check(args.filepath)
