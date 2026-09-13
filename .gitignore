@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.vscode/
 .DS_Store
 *.csv
-!sample_data/*.csv
+!sample_data/loan_data_set.csv
