@@ -360,7 +360,7 @@ title.pack(pady=(15, 5))
 
 subtitle = ttk.Label(
     window,
-    text="Check a CSV for a data quality problems."
+    text="Check a CSV for data quality problems."
 )
 subtitle.pack(pady=(0, 15))
 

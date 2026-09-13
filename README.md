@@ -28,21 +28,7 @@ This tool automates that first-20-or-so-minutes routine into a single command or
 
 ## Example OUTPUT
 
---- Missing Values ---
-                                            missing_count  missing_pct
-id                                                2260668        100.0
-member_id                                         2260668        100.0
-url                                               2260668        100.0
-orig_projected_additional_accrued_interest        2252242         99.6
-hardship_loan_status                              2250055         99.5
-...                                                   ...          ...
-acc_now_delinq                                         29          0.0
-inq_last_6mths                                         30          0.0
-tax_liens                                             105          0.0
-delinq_amnt                                            29          0.0
-chargeoff_within_12_mths                              145          0.0
-
-[113 rows x 2 columns]
+![Dashboard](screenshots/dashboard.png)
 
 ## What it checks
 
