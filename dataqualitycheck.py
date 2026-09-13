@@ -178,15 +178,8 @@ def run_check(filepath):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Check a CSV quality."
-    )
-
-    parser.add_argument(
-        "filepath",
-        help="Path to the CSV file"
-    )
-
+    parser = argparse.ArgumentParser(description="Check a CSV quality.")
+    parser.add_argument("filepath", help="Path to the CSV file")
     args = parser.parse_args()
 
     try:
@@ -195,5 +188,5 @@ if __name__ == "__main__":
         print(f"\nError: couldn't find a file at '{args.filepath}'. Check the path and try again.\n")
     except pd.errors.EmptyDataError:
         print(f"\nError: '{args.filepath}' appears to be empty.\n")
-
-    run_check(args.filepath)
+    except Exception as e:
+        print(f"\nAn unexpected error occurred: {e}\n")
