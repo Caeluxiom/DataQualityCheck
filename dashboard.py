@@ -49,6 +49,59 @@ def create_table(parent, columns, widths):
     return frame, table
 
 
+def build_recommendations(
+    missing_report,
+    duplicate_count,
+    type_issues,
+    outlier_report
+):
+    recommendations = []
+
+    for col, row in missing_report.iterrows():
+        pct = row["missing_pct"]
+
+        if pct >= 50:
+            recommendations.append(
+                f"'{col}' is {pct:.0f}% missing. Check if you need it."
+            )
+        elif pct >= 5:
+            recommendations.append(
+                f"'{col}' has {pct:.1f}% missing. Decide how to handle it."
+            )
+
+    if duplicate_count > 0:
+        recommendations.append(
+            f"{duplicate_count:,} duplicate rows found. Verify and clean."
+        )
+
+    for col, issue in type_issues:
+        if issue == "Mixed types on load":
+            recommendations.append(
+                f"'{col}' has mixed value types. Check the values."
+            )
+        elif issue.startswith("Looks numeric"):
+            recommendations.append(
+                f"'{col}' looks numeric but is text. Check and convert if needed."
+            )
+        elif issue == "Multiple Python types":
+            recommendations.append(
+                f"'{col}' has multiple Python types. Check the values."
+            )
+
+    for col, count, pct in outlier_report:
+        if pct >= 5:
+            recommendations.append(
+                f"'{col}' has {count:,} possible outliers. Check the values."
+            )
+
+    if not recommendations:
+        recommendations.append(
+            "No major issues found."
+        )
+
+    return recommendations
+
+
 def browse_file():
     filepath = filedialog.askopenfilename(
         title="Choose CSV file",
@@ -111,6 +164,29 @@ def run_check():
                 )
             )
 
+        repeated_values = []
+
+        for col in df.columns:
+            value_counts = df[col].value_counts()
+
+            for value, count in value_counts.head(5).items():
+                if count > 1:
+                    repeated_values.append(
+                        (
+                            col,
+                            str(value),
+                            f"{count:,}",
+                            f"{count / len(df):.1%}"
+                        )
+                    )
+
+        repeated_values.sort(
+            key=lambda row: float(row[3].rstrip("%")),
+            reverse=True
+        )
+
+        duplicate_rows.extend(repeated_values)
+
         fill_table(duplicate_table, duplicate_rows)
 
         type_rows = []
@@ -132,6 +208,21 @@ def run_check():
             )
 
         fill_table(outlier_table, outlier_rows)
+
+        recommendations_list.delete(0, tk.END)
+
+        recommendations = build_recommendations(
+            missing_report,
+            duplicate_count,
+            type_issues,
+            outlier_report
+        )
+
+        for recommendation in recommendations:
+            recommendations_list.insert(
+                tk.END,
+                "- " + recommendation
+            )
 
         status_label.config(text="Check complete.")
 
@@ -160,6 +251,106 @@ window.title("Data Quality Checker")
 window.geometry("850x650")
 window.minsize(750, 550)
 
+style = ttk.Style()
+style.theme_use("clam")
+
+style.configure(
+    "TFrame",
+    background="#202020"
+)
+
+style.configure(
+    "TLabel",
+    background="#202020",
+    foreground="#eeeeee"
+)
+
+style.configure(
+    "TLabelframe",
+    background="#202020",
+    foreground="#eeeeee"
+)
+
+style.configure(
+    "TLabelframe.Label",
+    background="#202020",
+    foreground="#eeeeee"
+)
+
+style.configure(
+    "TButton",
+    background="#303030",
+    foreground="#eeeeee",
+    borderwidth=1
+)
+
+style.map(
+    "TButton",
+    background=[
+        ("active", "#404040"),
+        ("pressed", "#505050")
+    ],
+    foreground=[
+        ("active", "#ffffff")
+    ]
+)
+
+style.configure(
+    "TEntry",
+    fieldbackground="#303030",
+    foreground="#eeeeee"
+)
+
+style.configure(
+    "TNotebook",
+    background="#202020",
+    borderwidth=0
+)
+
+style.configure(
+    "TNotebook.Tab",
+    background="#303030",
+    foreground="#eeeeee",
+    padding=[10, 5]
+)
+
+style.map(
+    "TNotebook.Tab",
+    background=[
+        ("selected", "#404040"),
+        ("active", "#383838")
+    ],
+    foreground=[
+        ("selected", "#ffffff"),
+        ("active", "#ffffff")
+    ]
+)
+
+style.configure(
+    "Treeview",
+    background="#282828",
+    foreground="#eeeeee",
+    fieldbackground="#282828"
+)
+
+style.configure(
+    "Treeview.Heading",
+    background="#303030",
+    foreground="#eeeeee"
+)
+
+style.map(
+    "Treeview",
+    background=[
+        ("selected", "#404040")
+    ],
+    foreground=[
+        ("selected", "#ffffff")
+    ]
+)
+
+window.configure(background="#202020")
+
 title = ttk.Label(
     window,
     text="Data Quality Checker",
@@ -169,7 +360,7 @@ title.pack(pady=(15, 5))
 
 subtitle = ttk.Label(
     window,
-    text="Check a CSV for common data quality problems."
+    text="Check a CSV for a data quality problems."
 )
 subtitle.pack(pady=(0, 15))
 
@@ -237,8 +428,8 @@ notebook.add(duplicate_tab, text="Duplicates")
 
 duplicate_frame, duplicate_table = create_table(
     duplicate_tab,
-    ("Check", "Count", "Percentage"),
-    (400, 150, 120)
+    ("Column / Check", "Value / Count", "Count", "% of Rows"),
+    (250, 250, 100, 100)
 )
 
 duplicate_frame.pack(
@@ -274,6 +465,24 @@ outlier_frame, outlier_table = create_table(
 )
 
 outlier_frame.pack(
+    fill="both",
+    expand=True,
+    padx=10,
+    pady=10
+)
+
+recommendations_tab = ttk.Frame(notebook)
+notebook.add(recommendations_tab, text="Recommendations")
+
+recommendations_list = tk.Listbox(
+    recommendations_tab,
+    font=("Arial", 11),
+    bg="#282828",
+    fg="#eeeeee",
+    selectbackground="#404040"
+)
+
+recommendations_list.pack(
     fill="both",
     expand=True,
     padx=10,
