@@ -189,4 +189,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    try:
+        run_check(args.filepath)
+    except FileNotFoundError:
+        print(f"\nError: couldn't find a file at '{args.filepath}'. Check the path and try again.\n")
+    except pd.errors.EmptyDataError:
+        print(f"\nError: '{args.filepath}' appears to be empty.\n")
+
     run_check(args.filepath)

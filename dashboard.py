@@ -9,6 +9,8 @@ from dataqualitycheck import (
     check_outliers,
 )
 
+last_results = None
+
 
 def clear_table(table):
     for item in table.get_children():
@@ -226,9 +228,78 @@ def run_check():
 
         status_label.config(text="Check complete.")
 
+        global last_results
+        last_results = {
+            "filepath": filepath,
+            "df": df,
+            "missing_report": missing_report,
+            "duplicate_count": duplicate_count,
+            "duplicate_pct": duplicate_pct,
+            "type_issues": type_issues,
+            "outlier_report": outlier_report,
+            "recommendations": recommendations,
+        }
+
     except Exception as error:
         status_label.config(text="Error loading file.")
         messagebox.showerror("Error", str(error))
+
+
+def export_report():
+    if last_results is None:
+        messagebox.showwarning(
+            "Nothing to export",
+            "Run a check first, then export the report."
+        )
+        return
+
+    save_path = filedialog.asksaveasfilename(
+        title="Save report as",
+        defaultextension=".txt",
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+    )
+
+    if not save_path:
+        return
+
+    r = last_results
+    lines = []
+
+    lines.append(f"Data Quality Report: {r['filepath']}")
+    lines.append(f"Rows: {len(r['df']):,} | Columns: {len(r['df'].columns):,}")
+
+    lines.append("\n--- Missing Values ---")
+    if r["missing_report"].empty:
+        lines.append("No missing values found")
+    else:
+        lines.append(r["missing_report"].to_string())
+
+    lines.append("\n--- Duplicate Rows ---")
+    lines.append(f"Fully duplicated rows: {r['duplicate_count']} ({r['duplicate_pct']:.1f}%)")
+
+    lines.append("\n--- Potential Type Issues ---")
+    if r["type_issues"]:
+        for col, issue in r["type_issues"]:
+            lines.append(f"'{col}': {issue}")
+    else:
+        lines.append("No obvious type issues detected.")
+
+    lines.append("\n--- Potential Outliers (IQR) ---")
+    if r["outlier_report"]:
+        for col, count, pct in r["outlier_report"]:
+            lines.append(f"'{col}': {count} potential outliers ({pct:.1f}%)")
+    else:
+        lines.append("No outliers detected.")
+
+    lines.append("\n--- Recommendations ---")
+    for rec in r["recommendations"]:
+        lines.append(f"- {rec}")
+
+    with open(save_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    status_label.config(text=f"Report saved to {save_path}")
+    messagebox.showinfo("Export complete", f"Report saved to:\n{save_path}")
 
 
 def create_summary(parent, title):
@@ -254,114 +325,43 @@ window.minsize(750, 550)
 style = ttk.Style()
 style.theme_use("clam")
 
-style.configure(
-    "TFrame",
-    background="#202020"
-)
-
-style.configure(
-    "TLabel",
-    background="#202020",
-    foreground="#eeeeee"
-)
-
-style.configure(
-    "TLabelframe",
-    background="#202020",
-    foreground="#eeeeee"
-)
-
-style.configure(
-    "TLabelframe.Label",
-    background="#202020",
-    foreground="#eeeeee"
-)
-
-style.configure(
-    "TButton",
-    background="#303030",
-    foreground="#eeeeee",
-    borderwidth=1
-)
+style.configure("TFrame", background="#202020")
+style.configure("TLabel", background="#202020", foreground="#eeeeee")
+style.configure("TLabelframe", background="#202020", foreground="#eeeeee")
+style.configure("TLabelframe.Label", background="#202020", foreground="#eeeeee")
+style.configure("TButton", background="#303030", foreground="#eeeeee", borderwidth=1)
 
 style.map(
     "TButton",
-    background=[
-        ("active", "#404040"),
-        ("pressed", "#505050")
-    ],
-    foreground=[
-        ("active", "#ffffff")
-    ]
+    background=[("active", "#404040"), ("pressed", "#505050")],
+    foreground=[("active", "#ffffff")]
 )
 
-style.configure(
-    "TEntry",
-    fieldbackground="#303030",
-    foreground="#eeeeee"
-)
-
-style.configure(
-    "TNotebook",
-    background="#202020",
-    borderwidth=0
-)
-
-style.configure(
-    "TNotebook.Tab",
-    background="#303030",
-    foreground="#eeeeee",
-    padding=[10, 5]
-)
+style.configure("TEntry", fieldbackground="#303030", foreground="#eeeeee")
+style.configure("TNotebook", background="#202020", borderwidth=0)
+style.configure("TNotebook.Tab", background="#303030", foreground="#eeeeee", padding=[10, 5])
 
 style.map(
     "TNotebook.Tab",
-    background=[
-        ("selected", "#404040"),
-        ("active", "#383838")
-    ],
-    foreground=[
-        ("selected", "#ffffff"),
-        ("active", "#ffffff")
-    ]
+    background=[("selected", "#404040"), ("active", "#383838")],
+    foreground=[("selected", "#ffffff"), ("active", "#ffffff")]
 )
 
-style.configure(
-    "Treeview",
-    background="#282828",
-    foreground="#eeeeee",
-    fieldbackground="#282828"
-)
-
-style.configure(
-    "Treeview.Heading",
-    background="#303030",
-    foreground="#eeeeee"
-)
+style.configure("Treeview", background="#282828", foreground="#eeeeee", fieldbackground="#282828")
+style.configure("Treeview.Heading", background="#303030", foreground="#eeeeee")
 
 style.map(
     "Treeview",
-    background=[
-        ("selected", "#404040")
-    ],
-    foreground=[
-        ("selected", "#ffffff")
-    ]
+    background=[("selected", "#404040")],
+    foreground=[("selected", "#ffffff")]
 )
 
 window.configure(background="#202020")
 
-title = ttk.Label(
-    window,
-    text="Data Quality Checker",
-    font=("Arial", 20)
-)
+title = ttk.Label(window, text="Data Quality Checker", font=("Arial", 20))
 title.pack(pady=(15, 5))
 
-subtitle = ttk.Label(
-    window,
-    text="Check a CSV for data quality problems."
-)
+subtitle = ttk.Label(window, text="Check a CSV for data quality problems.")
 subtitle.pack(pady=(0, 15))
 
 file_frame = ttk.Frame(window)
@@ -369,25 +369,17 @@ file_frame.pack(fill="x", padx=20)
 
 file_path = tk.StringVar()
 
-file_entry = ttk.Entry(
-    file_frame,
-    textvariable=file_path
-)
+file_entry = ttk.Entry(file_frame, textvariable=file_path)
 file_entry.pack(side="left", fill="x", expand=True)
 
-browse_button = ttk.Button(
-    file_frame,
-    text="Browse",
-    command=browse_file
-)
+browse_button = ttk.Button(file_frame, text="Browse", command=browse_file)
 browse_button.pack(side="left", padx=(10, 0))
 
-run_button = ttk.Button(
-    window,
-    text="Run Check",
-    command=run_check
-)
+run_button = ttk.Button(window, text="Run Check", command=run_check)
 run_button.pack(pady=15)
+
+export_button = ttk.Button(window, text="Export Report", command=export_report)
+export_button.pack(pady=(0, 15))
 
 summary_frame = ttk.Frame(window)
 summary_frame.pack(fill="x", padx=20, pady=5)
@@ -400,12 +392,7 @@ type_value = create_summary(summary_frame, "Type Issues")
 outlier_value = create_summary(summary_frame, "Outlier Columns")
 
 notebook = ttk.Notebook(window)
-notebook.pack(
-    fill="both",
-    expand=True,
-    padx=20,
-    pady=15
-)
+notebook.pack(fill="both", expand=True, padx=20, pady=15)
 
 missing_tab = ttk.Frame(notebook)
 notebook.add(missing_tab, text="Missing Values")
@@ -415,13 +402,7 @@ missing_frame, missing_table = create_table(
     ("Column", "Missing Count", "Missing %"),
     (400, 150, 120)
 )
-
-missing_frame.pack(
-    fill="both",
-    expand=True,
-    padx=10,
-    pady=10
-)
+missing_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
 duplicate_tab = ttk.Frame(notebook)
 notebook.add(duplicate_tab, text="Duplicates")
@@ -431,13 +412,7 @@ duplicate_frame, duplicate_table = create_table(
     ("Column / Check", "Value / Count", "Count", "% of Rows"),
     (250, 250, 100, 100)
 )
-
-duplicate_frame.pack(
-    fill="both",
-    expand=True,
-    padx=10,
-    pady=10
-)
+duplicate_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
 type_tab = ttk.Frame(notebook)
 notebook.add(type_tab, text="Type Issues")
@@ -447,13 +422,7 @@ type_frame, type_table = create_table(
     ("Column", "Issue"),
     (400, 300)
 )
-
-type_frame.pack(
-    fill="both",
-    expand=True,
-    padx=10,
-    pady=10
-)
+type_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
 outlier_tab = ttk.Frame(notebook)
 notebook.add(outlier_tab, text="Outliers")
@@ -463,13 +432,7 @@ outlier_frame, outlier_table = create_table(
     ("Column", "Outlier Count", "Outlier %"),
     (400, 150, 120)
 )
-
-outlier_frame.pack(
-    fill="both",
-    expand=True,
-    padx=10,
-    pady=10
-)
+outlier_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
 recommendations_tab = ttk.Frame(notebook)
 notebook.add(recommendations_tab, text="Recommendations")
@@ -481,19 +444,9 @@ recommendations_list = tk.Listbox(
     fg="#eeeeee",
     selectbackground="#404040"
 )
+recommendations_list.pack(fill="both", expand=True, padx=10, pady=10)
 
-recommendations_list.pack(
-    fill="both",
-    expand=True,
-    padx=10,
-    pady=10
-)
-
-status_label = ttk.Label(
-    window,
-    text="Choose a CSV file to begin."
-)
-
+status_label = ttk.Label(window, text="Choose a CSV file to begin.")
 status_label.pack(pady=(0, 10))
 
 window.mainloop()

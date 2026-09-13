@@ -30,15 +30,16 @@ This tool automates that first-20-or-so-minutes routine into a single command or
 
 ![Dashboard](screenshots/dashboard.png)
 
-## What it checks
+## What it does
 
-- Row/column counts -- a basic sanity check on load
-- Missing values -- count and percentage per column
-- Duplicate rows -- full-row duplicate detection
-- Repeated values -- common repeated values in each column
-- Type issues -- text columns that are likely meant to be numeric
-- Outliers -- flagged using the standard IQR (1.5x interquartile range) method
-- Recommendations -- simple suggestions based on the issues found
+- Row/column counts -- a basic sanity check on load.
+- Missing values -- count and percentage per column.
+- Duplicate rows -- full-row duplicate detection.
+- Repeated values -- common repeated values in each column.
+- Type issues -- text columns that are likely meant to be numeric.
+- Outliers -- flagged using the standard IQR (1.5x interquartile range) method.
+- Recommendations -- simple suggestions based on the issues found.
+- Export -- The report exports as a .txt file.
 
 ## Dashboard
 
