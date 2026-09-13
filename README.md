@@ -8,7 +8,7 @@ It can be used from the command line or through the Tkinter dashboard.
 
 ~~(Because i needed a project for portfolio)~~ Every data analysis project starts with the same manual routine: checking
 for missing values, duplicates, and type issues before trusting a dataset.
-This tool automates that first-20-or-so-minutes routine into a single command or  dashboard made wth Tkinter.
+This tool automates that first-20-or-so-minutes routine into a single command or  dashboard made with Tkinter.
 
 ## How to use it?
 
@@ -65,6 +65,14 @@ The dashboard provides separate tabs for:
 - Recommendations
 
 It also gives a quick summary of the dataset at the top.
+
+## Dataset I used:
+
+https://www.kaggle.com/datasets/burak3ergun/loan-data-set?select=loan_data_set.csv (Packaged)
+
+# I also used this dataset to test because it is larger:
+
+https://www.kaggle.com/datasets/adarshsng/lending-club-loan-data-csv?resource=download (Not Packaged)
 
 ## Built With
 Python, pandas, argparse, warnings, tkinter
